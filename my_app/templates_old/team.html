@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!--Bootstrap 4 and FontAwesome CDN css files-->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href= "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <!--Bootstrap 4 and FontAwesome LOCAL css files-->
+    <!--NOTE: local FontAwesome requires Fonts to be loaded also-->
+    <link rel="stylesheet" href= "../static/css/bootstrap.min.css">
+    <link rel="stylesheet" href= "../static/css/font-awesome.min.css">
+
+    <title>Title</title>
+</head>
+
+<body>
+
+    <nav class="navbar navbar-expand-sm bg-dark navbar-dark sticky-top">
+      <a class="navbar-brand" href="https://www.cisco.com/c/en/us/products/data-center-analytics/tetration-analytics/index.html">Tetration Anaylytics</a>
+      <!--<img src="../img/TA_logo_30px.png" alt="Logo" style="width:30px height:30px">-->
+      <img src="../img/TA_logo_30px.png" style="width:30px height:30px">
+        <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="#">Team</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Customers</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Partners</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Advanced Services</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">References</a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbardrop" data-toggle="dropdown">
+            POV
+          </a>
+          <div class="dropdown-menu">
+            <a class="dropdown-item" href="#">Edit PSS</a>
+            <a class="dropdown-item" href="/add_name">Add PSS</a>
+            <a class="dropdown-item" href="#">View PSS Info</a>
+          </div>
+        </li>
+      </ul>
+      <form class="form-inline my-2 my-lg-0" action="/action_page.php">
+        <input class="form-control mr-sm-2" type="text" placeholder="Search">
+        <button class="btn btn-success my-2 my-sm-2" type="submit">Search</button>
+      </form>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-12">
+                 <table class="table table-sm table-bordered table-light">
+                    <thead>
+                        <tr class="d-flex h-25">
+                            <th class="col-lg-1 text-center"> Action </th>
+                            <th class="col-lg-1 text-center"> Id </th>
+                            <th class="col-lg-2 text-center"> PSS </th>
+                            <th class="col-lg-2 text-center"> TSA </th>
+                            <th class="col-lg-3 text-center"> Org-Level-1 </th>
+                            <th class="col-lg-3 text-center"> Org-Level-2 </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for coverage in coverages %}
+                          {% if (coverage.pss_name == my_name) or (my_name == 'any') %}
+                            <tr class="d-flex">
+                                <td class ="col-lg-1 text-center">
+                                    <a href="/add_name"> <i class="fa fa-edit"></i></a>
+                                    <a href="http://www.linkedin.com"> <i class="fa fa-envelope"></i></a>
+                                    <a href="http://www.linkedin.com"> <i class="fa fa-trash"></i></a>
+                                </td>
+                                <td class="col-lg-1 text-center">{{ coverage.id }}</td>
+                                <td class="col-lg-2">{{ coverage.pss_name }}</td>
+                                <td class="col-lg-2">{{ coverage.tsa_name}}</td>
+                                <td class="col-lg-3">{{ coverage.sales_level_1}}</td>
+                                <td class="col-lg-3">{{ coverage.sales_level_2}}</td>
+                            </tr>
+                          {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-6 offset-lg-3 py-3 d-flex">
+              <ul class="pagination mx-auto text-center">
+                <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+                <li class="page-item"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item"><a class="page-link" name="next" value="10more" href="/team">Next</a></li>
+              </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Use CDN copies of Bootstrap 4 and jquey files to allow Pycharm Autocomplete to work -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <!--<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>-->
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>-->
+    <!--<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>-->
+
+    <!--Use LOCAL copies of Bootstrap 4 and jquey files to allow Pycharm Autocomplete to work-->
+    <script src="../static/js/jquery-3.1.0.min.js"> </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="../static/js/bootstrap.min.js"> </script>
+
+</body>
+</html>

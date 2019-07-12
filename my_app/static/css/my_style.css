@@ -1,0 +1,20 @@
+body {
+    padding: 20px;
+    background-color: #F0F8FF;
+}
+
+#leftSide {
+    background-color: #b8daff;
+    height: 400px;
+}
+
+#mainContent{
+    background-color: #9fcdff;
+    height: 400px;
+    padding-top: 20px;
+}
+
+#statusBar{
+    background-color: #b8daff;
+    height: 100px;
+}

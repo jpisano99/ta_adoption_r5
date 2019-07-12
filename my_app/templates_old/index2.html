@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tetration Adoption Home Page</title>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
+          integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/css/my_style.css">
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"
+            integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"
+            integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"
+            integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
+            crossorigin="anonymous"></script>
+
+</head>
+<body>
+
+<h2 class="text-center text-muted"> Welcome to Tetration Customer Adoption</h2>
+<h2 class="text-center text-muted"> Home Page !!</h2>
+<br>
+
+<div class="container">
+    <div id="statusBar" class="text-center col-sm-11">
+    </div>
+</div>
+<br>
+<br>
+
+<div class="container">
+    <div class="row">
+
+        <div id="leftSide" class="col-sm-4">
+            <br>
+            <h3 class="text-center">Customer Adoption Tools File Maintenance</h3>
+        </div>
+
+        <div id="mainContent" class="text-center col-sm-8">
+            <br>
+            <button id="importClick" onclick="btnClick('importNew')" type="button" class="btn btn-primary" type="button">Import New Data</button>
+            <button id="processClick" onclick="btnClick('processBookings')" type="button" class="btn btn-primary">Process Bookings</button>
+            <button id="dashClick" onclick="btnClick('dashBuild')" type="button" class="btn btn-primary">Build Dashboard</button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    function startIt() {
+        alert('start it');
+        $("#statusBar").load("doIt #processing")
+    }
+
+    function btnClick(var1){
+        // startIt();
+        // $("#statusBar").load("doIt?action=" + var1 +" #success")
+        $("#statusBar").load("doIt #processing")
+        // $("#statusBar").load("doIt?action=" + var1 +" #processing")
+    };
+
+
+    // $(document).ready(function () {
+    //
+    //     function btnClick(var1) {}
+    //         alert(var1);
+    //         $("#statusBar").load("status?var1=" + var1 + " #processing");
+    //
+    // });
+
+        // $("#importClick").click(function () {
+        // $("#statusBar").load("status?var1=jim #processing");
+        // console.log('importClicked');
+    // });
+</script>
+</body>
+</html>
