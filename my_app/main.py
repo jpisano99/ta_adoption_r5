@@ -376,7 +376,7 @@ def phase_2(run_dir=app_cfg['UPDATES_DIR']):
                 no_match.append([customer])
 
     push_list_to_xls(order_rows, 'jim1.xlsx')
-    push_list_to_xls(no_match, 'no_match.xlsx')
+    push_list_to_xls(no_match, 'subcription misses.xlsx')
 
     #
     # AS Delivery Analysis
@@ -407,7 +407,7 @@ def phase_2(run_dir=app_cfg['UPDATES_DIR']):
             order_row[dest_col_nums['Project Scheduled Start Date']] = datetime.datetime.strptime(as_dict[customer][0][6], '%m-%d-%Y')
             order_row[dest_col_nums['Scheduled End Date']] = datetime.datetime.strptime(as_dict[customer][0][7], '%m-%d-%Y')
             order_row[dest_col_nums['Project Creation Date']] = datetime.datetime.strptime(as_dict[customer][0][8], '%m-%d-%Y')
-            #order_row[dest_col_nums['Project Closed Date']] = datetime.datetime.strptime(as_dict[customer][0][9], '%m-%d-%Y')
+            # order_row[dest_col_nums['Project Closed Date']] = datetime.datetime.strptime(as_dict[customer][0][9], '%m-%d-%Y')
             order_row[dest_col_nums['Traffic lights (account team)']] = as_dict[customer][0][10]
             order_row[dest_col_nums['Tracking Responsible']] = as_dict[customer][0][11]
             order_row[dest_col_nums['ExecutiveSummary']] = as_dict[customer][0][12]
@@ -569,6 +569,7 @@ def phase_3(run_dir=app_cfg['UPDATES_DIR']):
     platform_type_col_num = -1
     sku_col_num = -1
     my_col_idx = {}
+    no_as_match = []
 
     # Create top row for the dashboard
     # also make a dict (my_col_idx) of {column names : column number}
@@ -645,6 +646,9 @@ def phase_3(run_dir=app_cfg['UPDATES_DIR']):
                 as_comments = 'No Comments'
             else:
                 as_comments = as_dict[customer][4]
+        else:
+            no_as_match.append([customer])
+
 
         #
         # Loop over this customers orders
@@ -690,6 +694,8 @@ def phase_3(run_dir=app_cfg['UPDATES_DIR']):
         order[my_col_idx['Orders Found']] = orders_found
 
         new_rows.append(order)
+
+    push_list_to_xls(no_as_match, 'AS customer name misses.xlsx')
     #
     # End of main loop
     #
