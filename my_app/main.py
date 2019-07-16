@@ -416,6 +416,7 @@ def phase_2(run_dir=app_cfg['UPDATES_DIR']):
             order_row[dest_col_nums['ActivitiesCurrent']] = as_dict[customer][0][15]
             order_row[dest_col_nums['ActivitiesNext']] = as_dict[customer][0][16]
             order_row[dest_col_nums['LastUpdate']] = as_dict[customer][0][17]
+            order_row[dest_col_nums['SO']] = as_dict[customer][0][18]
 
         else:
             got_one = False

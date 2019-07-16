@@ -48,6 +48,7 @@ sheet_map = [['ERP End Customer Name', 'XLS_BOOKINGS', -1, 'Customer Name'],
              ['ActivitiesCurrent', 'XLS_AS_DELIVERY_STATUS', -1, 'NEW AS Activities Current', 'text'],
              ['ActivitiesNext', 'XLS_AS_DELIVERY_STATUS', -1, 'NEW AS ActivitiesNext', 'text'],
              ['LastUpdate', 'XLS_AS_DELIVERY_STATUS', -1, 'NEW AS LastUpdate', 'text'],
+             ['SO', 'XLS_AS_DELIVERY_STATUS', -1, 'NEW AS SO', 'text'],
 
 
              ['Orders Found', '', -1, ''],
