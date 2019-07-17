@@ -108,6 +108,7 @@ print("Customer IDs: ", len(cust_db))
 print("Customer Names: ", len(cust_name_db))
 print("Customer SOs: ", len(so_db))
 
+# # Display Customer IDs and Aliases
 # for my_id, names in cust_name_db.items():
 #     if len(names) > 1:
 #         print('Customer ID', my_id, ' has the following aliases')
@@ -115,6 +116,7 @@ print("Customer SOs: ", len(so_db))
 #             print('\t\t', name)
 #             time.sleep(1)
 
+# # Display Sales Order info
 # for my_so, info in so_db.items():
 #     if len(info) > 1:
 #         print('Sales Order', my_so, ' has multiple Customer IDs and Names')
@@ -122,16 +124,16 @@ print("Customer SOs: ", len(so_db))
 #             print('\t\t', my_info)
 #             time.sleep(1)
 
-
-for cust_id, my_orders in cust_db.items():
-    print()
-    print ("Customer ID ", cust_id, " has ", len(my_orders), ' orders')
-    print('Names ', cust_name_db[cust_id])
-    for order_num, skus in my_orders.items():
-        print ('\tOrder Number ', order_num, ' has ', len(skus),' skus')
-        for sku in skus:
-            print('\t\t', sku)
-            time.sleep(1)
+# # Display Customer and Order Details
+# for cust_id, my_orders in cust_db.items():
+#     print()
+#     print ("Customer ID ", cust_id, " has ", len(my_orders), ' orders')
+#     print('Names ', cust_name_db[cust_id])
+#     for order_num, skus in my_orders.items():
+#         print ('\tOrder Number ', order_num, ' has ', len(skus),' skus')
+#         for sku in skus:
+#             print('\t\t', sku)
+#             time.sleep(1)
 
 
 # {cust_id1: {name: [SO1,SO2,SO3], cust_id2: [name1,name2] }
