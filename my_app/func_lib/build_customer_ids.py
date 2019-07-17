@@ -10,6 +10,7 @@ as_wb, as_ws = open_wb(app_cfg['TESTING_TA_AS_FIXED_SKU_RAW'])
 cust_wb, cust_ws = open_wb(app_cfg['TESTING_BOOKINGS_RAW_WITH_SO'])
 sub_wb, sub_ws = open_wb(app_cfg['TESTING_RAW_SUBSCRIPTIONS'])
 
+
 print("AS Fixed SKUs Rows:", as_ws.nrows)
 print('Bookings Rows:', cust_ws.nrows)
 print('Subscription Rows:', sub_ws.nrows)
@@ -108,6 +109,23 @@ print("Customer IDs: ", len(cust_db))
 print("Customer Names: ", len(cust_name_db))
 print("Customer SOs: ", len(so_db))
 
+
+#
+# Build a quick and dirty reverse lookup of customer names {cust_name: cust_ids}
+#
+cust_id_db = {}
+for my_id, names in cust_name_db.items():
+    for name in names:
+        if name not in cust_id_db:
+            cust_id_db[name] = my_id
+
+# print(len(cust_id_db))
+# for id, name in cust_id_db.items():
+#     print(id,name)
+#     time.sleep(1)
+# exit()
+
+
 # # Display Customer IDs and Aliases
 # for my_id, names in cust_name_db.items():
 #     if len(names) > 1:
@@ -136,10 +154,6 @@ print("Customer SOs: ", len(so_db))
 #             time.sleep(1)
 
 
-# {cust_id1: {name: [SO1,SO2,SO3], cust_id2: [name1,name2] }
-# {cust_id1: [[order1,order2], [order1,order2]],
-
-
 #
 # Process AS AS-F SKU File - find AS SO and PID numbers
 #
@@ -147,19 +161,25 @@ hit = 0
 miss = 0
 as_db = {}
 for row_num in range(1, as_ws.nrows):
-    as_record = []
+    my_as_info_list = []
     # Gather the fields we want
     as_pid = as_ws.cell_value(row_num, 0)
     as_cust_name = as_ws.cell_value(row_num, 2)
     as_so = as_ws.cell_value(row_num, 16)
 
     if as_so not in as_db:
-        as_record = [as_pid, as_cust_name]
-        as_db[as_so] = as_record
+        my_as_info_list.append((as_pid, as_cust_name))
+        as_db[as_so] = my_as_info_list
     else:
-        as_record = as_db[as_so]
-        as_record.append([as_pid, as_cust_name])
-        as_db[as_so] = as_record
+        my_as_info_list = as_db[as_so]
+        add_it = True
+        for info in my_as_info_list:
+            if info == (as_pid, as_cust_name):
+                add_it = False
+                break
+        if add_it:
+            my_as_info_list.append((as_pid, as_cust_name))
+            as_db[as_so] = my_as_info_list
 
     if as_so in so_db:
         # print('\t\tFound ', as_so,as_cust_name)
@@ -168,23 +188,19 @@ for row_num in range(1, as_ws.nrows):
         # print('\t\tNOT Found', as_cust_name)
         miss += 1
 
-    print(as_record)
-    print(as_db)
-    time.sleep(1)
+    # print(my_as_info_list)
+    # print(as_db)
+    # time.sleep(1)
 print('hits', hit)
 print('miss', miss)
 
-#
-# Build a quick and dirty reference dict of {cust_name: cust_ids}
-#
-cust_id_db = {}
-for my_id, names in cust_name_db.items():
-    for name in names:
-        if name not in cust_id_db:
-            cust_id_db[name] = my_id
-            if name == 'THE VANGUARD GROUP INC':
-                print('my id',my_id)
-
+# # Display AS Sales Order info
+# for my_so, info in as_db.items():
+#     if len(info) > 1:
+#         print('AS Sales Order', my_so, ' has multiple PIDs')
+#         for my_info in info:
+#             print('\t\t', my_info)
+#             time.sleep(1)
 
 #
 # Process Subscriptions
@@ -197,25 +213,39 @@ ninety_days = []
 ninety_plus = []
 header_row = []
 
-for row_num in range(0, sub_ws.nrows):
+for row_num in range(1, sub_ws.nrows):
     # Gather the fields we want
-    if row_num == 0 :
-        header_row.append(sub_ws.cell_value(row_num, 2))
-        header_row.append(sub_ws.cell_value(row_num, 4))
-        header_row.append(sub_ws.cell_value(row_num, 5))
-        header_row.append(sub_ws.cell_value(row_num, 6))
-        header_row.append(sub_ws.cell_value(row_num, 8))
-        print(header_row)
-        continue
-    else:
-        sub_cust_name = sub_ws.cell_value(row_num, 2)
-        sub_id = sub_ws.cell_value(row_num, 4)
-        sub_status = sub_ws.cell_value(row_num, 5)
-        sub_start_date = sub_ws.cell_value(row_num, 6)
-        sub_renew_date = sub_ws.cell_value(row_num, 8)
+    sub_cust_name = sub_ws.cell_value(row_num, 2)
+    sub_id = sub_ws.cell_value(row_num, 4)
+    sub_status = sub_ws.cell_value(row_num, 5)
+    sub_start_date = sub_ws.cell_value(row_num, 6)
+    sub_renew_date = sub_ws.cell_value(row_num, 8)
 
     if sub_cust_name in cust_id_db:
         sub_cust_id = cust_id_db[sub_cust_name]
+
+        # Go get a list of SOs for this cust_id
+        my_so_dict = cust_db[sub_cust_id]
+        my_so_list = []
+        for so, skus in my_so_dict.items():
+            my_so_list.append(so)
+
+        # Go get a list of AS PIDs for these SO's
+        for so in my_so_list:
+            if so in as_db:
+                # Found AS record
+                as_info = as_db[so]
+                print(as_info)
+                as_pid = as_info[0][0]
+                as_cust_name = as_info[0][1]
+                print(as_pid)
+                print(as_cust_name)
+                exit()
+            else:
+                stan = 'Not Found'
+
+        # time.sleep(1)
+
     else:
         sub_cust_id = 'Unknown'
         print(sub_cust_id,sub_cust_name)
@@ -256,6 +286,9 @@ print()
 
 print(header_row)
 thirty_days.insert(0, header_row)
+
+magic_list = ['cust_id', 'cust_name', 'so', 'sub id', 'renew date', 'pid', 'as status']
+
 
 push_list_to_xls(thirty_days,'jim_subs.xlsx')
 print('sub hits', hit)
