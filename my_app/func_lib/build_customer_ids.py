@@ -1,7 +1,12 @@
 from my_app.func_lib.open_wb import open_wb
 from my_app.settings import app_cfg
-import time
 
+# import datetime
+import xlrd#
+from datetime import date
+from datetime import time
+from datetime import datetime
+import time
 
 as_wb, as_ws = open_wb(app_cfg['TESTING_TA_AS_FIXED_SKU_RAW'])
 cust_wb, cust_ws = open_wb(app_cfg['TESTING_BOOKINGS_RAW_WITH_SO'])
@@ -26,6 +31,15 @@ for row_num in range(1, cust_ws.nrows):
     cust_ultimate_name = cust_ws.cell_value(row_num, 14)
     cust_so = cust_ws.cell_value(row_num, 11)
     cust_sku = cust_ws.cell_value(row_num, 19)
+
+    if cust_id == '':
+        cust_id = 'None Assigned'
+
+    # if cust_erp_name == 'THE VANGUARD GROUP INC':
+    #     print('id should be', cust_id, cust_ultimate_name)
+    #     if cust_id == '':
+    #         print('none')
+    #     exit()
 
     # FORMAT: cust_db
     # {cust_id1: {so1: [sku1, sku2,..]
@@ -114,7 +128,7 @@ for row_num in range(1, as_ws.nrows):
         # print('\t\tNOT Found', as_cust_name)
         miss += 1
 
-    #time.sleep(1)
+    # time.sleep(1)
 print('hits', hit)
 print('miss', miss)
 
@@ -126,14 +140,21 @@ for my_id, names in cust_name_db.items():
     for name in names:
         if name not in cust_id_db:
             cust_id_db[name] = my_id
+            if name == 'THE VANGUARD GROUP INC':
+                print('my id',my_id)
 
 
-
+print('hey there', cust_id_db['THE VANGUARD GROUP INC'])
 print('names db' , len(cust_id_db))
 
 
-sub_hit = 0
-sub_miss = 0
+today = datetime.today()
+expired = []
+thirty_days = []
+sixty_days = []
+ninety_days = []
+ninety_plus = []
+
 for row_num in range(1, sub_ws.nrows):
     # Gather the fields we want
     # sub_pid = as_ws.cell_value(row_num, 0)
@@ -141,15 +162,48 @@ for row_num in range(1, sub_ws.nrows):
     sub_id = sub_ws.cell_value(row_num, 4)
     sub_status = sub_ws.cell_value(row_num, 5)
     sub_start_date = sub_ws.cell_value(row_num, 6)
-    jim = sub_ws.cell(row_num, 6)
-    print(jim)
-
+    sub_renew_date = sub_ws.cell_value(row_num, 8)
     if sub_cust_name in cust_id_db:
-        sub_hit = + 1
+        sub_cust_id = cust_id_db[sub_cust_name]
     else:
-        sub_miss = + 1
-        print (sub_cust_name, type(sub_start_date), sub_start_date)
-    time.sleep(1)
+        sub_cust_id = 'Unknown'
+        print(sub_cust_id,sub_cust_name)
+
+    year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_start_date, sub_wb.datemode)
+    sub_start_date = datetime(year, month, day)
+
+    year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_renew_date, sub_wb.datemode)
+    sub_renew_date = datetime(year, month, day)
+
+    days_to_renew = (sub_renew_date - today).days
+
+    #
+    # Bucket this customer renewal by age
+    #
+    if days_to_renew < 0:
+        expired.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+    elif days_to_renew <= 30:
+        thirty_days.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+    elif days_to_renew <= 60:
+        sixty_days.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+    elif days_to_renew <= 90:
+        ninety_days.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+    elif days_to_renew > 90:
+        ninety_plus.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+        # print(ninety_plus)
+        # time.sleep(1)
+
+subs_total = len(expired)+len(thirty_days)+len(sixty_days)+len(ninety_days)+len(ninety_plus)
+print()
+print('Total Subscriptions: ',subs_total)
+print('\tExpired:', len(expired))
+print('\t30 days:', len(thirty_days))
+print('\t60 days:', len(sixty_days))
+print('\t90 days:', len(ninety_days))
+print('\t90+ days:', len(ninety_plus))
+print()
+
+
 
 print('sub hits', hit)
 print('sub miss', miss)
