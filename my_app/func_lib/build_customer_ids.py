@@ -1,6 +1,7 @@
 from my_app.func_lib.open_wb import open_wb
 from my_app.func_lib.push_list_to_xls import push_list_to_xls
 from my_app.func_lib.push_xlrd_to_xls import push_xlrd_to_xls
+from my_app.func_lib.build_sku_dict import build_sku_dict
 from my_app.settings import app_cfg
 import xlrd
 from datetime import datetime
@@ -10,10 +11,45 @@ as_wb, as_ws = open_wb(app_cfg['TESTING_TA_AS_FIXED_SKU_RAW'])
 cust_wb, cust_ws = open_wb(app_cfg['TESTING_BOOKINGS_RAW_WITH_SO'])
 sub_wb, sub_ws = open_wb(app_cfg['TESTING_RAW_SUBSCRIPTIONS'])
 
-
 print("AS Fixed SKUs Rows:", as_ws.nrows)
 print('Bookings Rows:', cust_ws.nrows)
 print('Subscription Rows:', sub_ws.nrows)
+
+#
+# Create a SKU Filter
+#
+# Options Are: Product / Software / Service / SaaS / *
+sku_filter_val = '*'
+tmp_dict = build_sku_dict()
+sku_filter_dict = {}
+
+for key, val in tmp_dict.items():
+    if val[0] == sku_filter_val:
+        sku_filter_dict[key] = val
+    elif sku_filter_val == '*':
+        # Selects ALL Interesting SKUs
+        sku_filter_dict[key] = val
+
+print('SKU Filter set to:', sku_filter_val)
+
+#
+# Build a xref dict of valid customer ids for lookup by SO and ERP Name
+#
+xref_cust_name = {}
+xref_so = {}
+for row_num in range(1, cust_ws.nrows):
+    cust_id = cust_ws.cell_value(row_num, 15)
+    cust_erp_name = cust_ws.cell_value(row_num, 13)
+    cust_so = cust_ws.cell_value(row_num, 11)
+
+    # Only add valid ID/Name Pairs to the reference
+    if cust_id == '-999' or cust_id == '':
+        continue
+
+    if cust_erp_name not in xref_cust_name:
+        xref_cust_name[cust_erp_name] = cust_id
+    if cust_so not in xref_so:
+        xref_so[cust_so] = cust_id
 
 #
 # Process Main Bookings File
@@ -22,7 +58,7 @@ cntr = 0
 cust_db = {}
 cust_name_db = {}
 so_db = {}
-
+# Main loop starts here
 for row_num in range(1, cust_ws.nrows):
     my_so_dict = {}
     my_sku_list = []
@@ -36,8 +72,17 @@ for row_num in range(1, cust_ws.nrows):
     cust_so = cust_ws.cell_value(row_num, 11)
     cust_sku = cust_ws.cell_value(row_num, 19)
 
-    if cust_id == '':
-        cust_id = 'Unknown'
+    # We have a missing or bad cust_id try to look one up
+    if cust_id == '' or cust_id == '-999':
+        if cust_erp_name in xref_cust_name:
+            cust_id = xref_cust_name[cust_erp_name]
+
+        if cust_so in xref_so:
+            cust_id = xref_so[cust_so]
+
+        # If id is still bad flag cust_id as UNKNOWN
+        if cust_id == '' or cust_id == '-999':
+            cust_id = 'UNKNOWN'
 
     #
     # Check cust_db
@@ -47,23 +92,26 @@ for row_num in range(1, cust_ws.nrows):
     # Is this new one ?
     if cust_id not in cust_db:
         # Create a new cust_id and basic record
-        my_so_dict[cust_so] = [cust_sku]
-        cust_db[cust_id] = my_so_dict
+        if cust_sku in sku_filter_dict:
+            my_so_dict[cust_so] = [cust_sku]
+            cust_db[cust_id] = my_so_dict
     else:
         # Grab the SO dict from this existing customer id
         my_so_dict = cust_db[cust_id]
 
         # If this SO is already in this cust_id just append this SKU
         if cust_so in my_so_dict:
-            # This SO is in our dict, insert this SKU to this SO
-            my_sku_list = my_so_dict[cust_so]
-            my_sku_list.append(cust_sku)
-            my_so_dict[cust_so] = my_sku_list
-            cust_db[cust_id] = my_so_dict
+            if cust_sku in sku_filter_dict:
+                # This SO is in our dict, insert this SKU to this SO
+                my_sku_list = my_so_dict[cust_so]
+                my_sku_list.append(cust_sku)
+                my_so_dict[cust_so] = my_sku_list
+                cust_db[cust_id] = my_so_dict
         else:
-            my_sku_list = [cust_sku]
-            my_so_dict[cust_so] = my_sku_list
-            cust_db[cust_id] = my_so_dict
+            if cust_sku in sku_filter_dict:
+                my_sku_list = [cust_sku]
+                my_so_dict[cust_so] = my_sku_list
+                cust_db[cust_id] = my_so_dict
 
     #
     # Check cust_name_db
@@ -103,21 +151,34 @@ for row_num in range(1, cust_ws.nrows):
             my_so_info_list.append((cust_id, cust_erp_name))
             so_db[cust_id] = my_so_info_list
 
-    # print(so_db)
-    # time.sleep(1)
-print("Customer IDs: ", len(cust_db))
-print("Customer Names: ", len(cust_name_db))
-print("Customer SOs: ", len(so_db))
-
-
 #
-# Build a quick and dirty reverse lookup of customer names {cust_name: cust_ids}
+# Build a quick and dirty reverse lookup of customer names {cust_name: cust_id}
 #
 cust_id_db = {}
 for my_id, names in cust_name_db.items():
     for name in names:
         if name not in cust_id_db:
             cust_id_db[name] = my_id
+
+
+print("Customer IDs with AS Services: ", len(cust_db))
+print("Customer Unique Customer ID's: ", len(cust_name_db))
+print("Customer Unique Customer Names: ", len(cust_id_db))
+print("Customer Unique SOs: ", len(so_db))
+
+
+# A quick check on customer ids
+id_list = [['Customer ID', 'Customer Aliases']]
+for cust_id, cust_aliases in cust_name_db.items():
+    alias_list = []
+    alias_str = ''
+    for cust_alias in cust_aliases:
+        alias_list.append(cust_alias)
+        alias_str = alias_str + cust_alias + ' : '
+    alias_str = alias_str[:-3]
+    id_list.append([cust_id, alias_str])
+
+push_list_to_xls(id_list, 'unique_cust_ids.xlsx')
 
 # print(len(cust_id_db))
 # for id, name in cust_id_db.items():
@@ -201,17 +262,206 @@ print('miss', miss)
 #         for my_info in info:
 #             print('\t\t', my_info)
 #             time.sleep(1)
+# exit()
+
 
 #
-# Process Subscriptions
+# Build ths Subscription db (sub_db)
 #
+sub_db = {}
+for row_num in range(1, sub_ws.nrows):
+    # Gather the fields we want
+    sub_cust_name = sub_ws.cell_value(row_num, 2)
+    sub_id = sub_ws.cell_value(row_num, 4)
+
+    my_sub_id_list = []
+    # Is this new one ?
+    if sub_cust_name not in sub_db:
+        my_sub_id_list = [sub_id]
+        sub_db[sub_cust_name] = my_sub_id_list
+    else:
+        my_sub_id_list = sub_db[sub_cust_name]
+        add_it = True
+        for id in my_sub_id_list:
+            if id == sub_id:
+                add_it = False
+                break
+        if add_it:
+            my_sub_id_list.append(sub_id)
+            sub_db[sub_cust_name] = my_sub_id_list
+
+# # Display Customer Subscription IDs
+# for sub_cust_name, sub_ids in sub_db.items():
+#     if len(sub_ids) > 1:
+#         print('Customer ', sub_cust_name, ' has multiple Subscription IDs')
+#         for sub_id in sub_ids:
+#             print('\t\t', sub_id)
+#             time.sleep(1)
+#
+# exit()
+
+
+#
+# Databases we have constructed to link data
+#
+############
+# Based on the Bookings File
+#
+# cust_db
+# {cust_id: {so1: [sku1, sku2,..]
+#             so2: [sku1, sku2,..]}
+#
+# cust_id_db
+# {erp_name: cust_id}
+
+# cust_name_db
+# {cust_id: [erp_name1, erp_name2]}
+#
+# Check so_db
+# {so: [cust_id, cust_erp_name]}
+#
+############
+# Based on the AS-F Data
+#
+# as_db
+# {so: [(as_pid1, as_cust_name1),(as_pid2, as_cust_name2)]}
+#
+############
+# Based on the Subscription and Renewal Data
+#
+# sub_db
+# {erp_name: [sub_id1,sub_id2]}
+#
+
+
+#
+# Make the Magic List
+#
+magic_list = []
+header_row = ['cust_id', 'cust_name', 'sub id', 'renew date', 'renew date', 'sub status', 'so', 'as pid', 'as status']
+magic_list.append(header_row)
+print (magic_list)
+
+for cust_id, so_dict in cust_db.items():
+    magic_cust_id = cust_id
+    magic_cust_name_list = cust_name_db[magic_cust_id] # List of all Names / aliases for this customer id
+    magic_as_pid_list = []
+    magic_sub_id_list = []
+    magic_so_list = []
+
+    # print('SO Dict is:', len(so_dict), 'for Customer Name: ', magic_cust_name_list, '/', magic_cust_id)
+
+    # # Let's find all the AS PIDs in as_db for this Customer ID
+    # for so, sku_list in so_dict.items():
+    #     if so in as_db:
+    #         my_as_details = as_db[so]
+    #         # magic_as_so = so
+    #         for as_detail in my_as_details:
+    #             # as_db
+    #             # {so: [(as_pid1, as_cust_name1),(as_pid2, as_cust_name2)]}
+    #             print('\tFound AS PID', as_detail[0], 'for Customer', as_detail[1])
+    #             magic_as_pid_list.append(as_detail[0])
+    #             time.sleep(1)
+    #     else:
+    #         print ('\tNO AS PID found for', magic_cust_name_list)
+    # time.sleep(1)
+    # print()
+    # print('cust id', magic_cust_id, '\tcust name', magic_cust_name, '\tpid:',magic_as_pid)
+
+    # Let's find all Subscriptions for this Customer ID / Name
+    # We need to search by ERP Customer Name
+    jim={}
+    if magic_cust_id == '-999':
+        print('Customer ID: ', magic_cust_id , 'has ', len(magic_cust_name_list), ' aliases:', magic_cust_name_list)
+        for cust_name in magic_cust_name_list:
+            if cust_name in sub_db:
+                # Found subscription(s)
+                print('\tName found in Subscription:', cust_name, ' subscriptions ', sub_db[cust_name])
+                magic_sub_id_list.append(sub_db[cust_name])
+        if magic_sub_id_list == []:
+            magic_sub_id_list.append("No Subscriptions Found")
+        # print('\t\t Found subscriptions: ', magic_sub_id_list)
+
+        time.sleep(1)
+exit()
+
+
+
+    # sub_db
+    # {erp_name: [sub_id1,sub_id2]}
+
+    # cust_id_db
+    # {erp_name: cust_id}
+
+
+exit()
+
+
+#
+#   IGNORE BELOW
+#
+
+
+
+
+
+
+for row_num in range(1, sub_ws.nrows):
+    # Gather the fields we want
+    magic_sub_cust_name = sub_ws.cell_value(row_num, 2)
+    magic_sub_id = sub_ws.cell_value(row_num, 4)
+    magic_sub_status = sub_ws.cell_value(row_num, 5)
+    magic_sub_start_date = sub_ws.cell_value(row_num, 6)
+    magic_sub_renew_date = sub_ws.cell_value(row_num, 8)
+
+    # Get the customer ID
+    if magic_sub_cust_name in cust_id_db:
+        print(len(magic_sub_cust_name))
+        print('\t',magic_sub_cust_name)
+        time.sleep(.5)
+
+        magic_bookings_cust_id = cust_id_db[magic_sub_cust_name]
+    else:
+        pass
+        # print("Customer ID Miss", magic_sub_cust_name)
+
+    # Get
+
+# Diagnostic
+match = 0
+misses = 0
+for row_num in range(1, as_ws.nrows):
+    found = False
+    as_cust_name = as_ws.cell_value(row_num, 2)
+    #print(as_cust_name)
+    for row_num in range(1, sub_ws.nrows):
+        sub_cust_name = sub_ws.cell_value(row_num, 2)
+        #time.sleep(1)
+        #print("\t",sub_cust_name)
+        if sub_cust_name == as_cust_name:
+            found=True
+            match += 1
+            print('\tMatched', as_cust_name)
+            break
+    if not found:
+        misses += 1
+        print(as_cust_name, 'not found in AS sheet')
+
+    #time.sleep(1)
+
+print('matches' ,match,misses)
+exit()
+
+
+
+
 today = datetime.today()
 expired = []
 thirty_days = []
 sixty_days = []
 ninety_days = []
 ninety_plus = []
-header_row = []
+
 
 for row_num in range(1, sub_ws.nrows):
     # Gather the fields we want
@@ -222,33 +472,40 @@ for row_num in range(1, sub_ws.nrows):
     sub_renew_date = sub_ws.cell_value(row_num, 8)
 
     if sub_cust_name in cust_id_db:
+        # Get the cust_id that matches this subscription name
         sub_cust_id = cust_id_db[sub_cust_name]
 
         # Go get a list of SOs for this cust_id
+        # Use this to find and AS engagements
         my_so_dict = cust_db[sub_cust_id]
         my_so_list = []
         for so, skus in my_so_dict.items():
             my_so_list.append(so)
 
         # Go get a list of AS PIDs for these SO's
+        my_as_pids = []
         for so in my_so_list:
             if so in as_db:
-                # Found AS record
+                # Found an AS record
                 as_info = as_db[so]
-                print(as_info)
                 as_pid = as_info[0][0]
                 as_cust_name = as_info[0][1]
-                print(as_pid)
-                print(as_cust_name)
-                exit()
-            else:
-                stan = 'Not Found'
-
-        # time.sleep(1)
-
+                my_as_pids.append(as_pid)
+            # else:
+            #     my_as_pids.append("NO AS Engagements Found !")
     else:
+        # We can't find a match on this customer name
+        # Maybe check aliases ?
         sub_cust_id = 'Unknown'
-        print(sub_cust_id,sub_cust_name)
+        my_as_pids = ''
+        my_so_list = ''
+
+    print(sub_cust_id, sub_cust_name, 'have ', len(my_as_pids), ' PIDS')
+    print('\t\t',my_as_pids)
+    # print('\tSOs',my_so_list)
+    # print('\tAS PIDS', my_as_pids)
+    # print()
+    time.sleep(1)
 
     year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_start_date, sub_wb.datemode)
     sub_start_date = datetime(year, month, day)
@@ -287,7 +544,7 @@ print()
 print(header_row)
 thirty_days.insert(0, header_row)
 
-magic_list = ['cust_id', 'cust_name', 'so', 'sub id', 'renew date', 'pid', 'as status']
+
 
 
 push_list_to_xls(thirty_days,'jim_subs.xlsx')
