@@ -338,7 +338,7 @@ for row_num in range(1, sub_ws.nrows):
 # Make the Magic List
 #
 magic_list = []
-header_row = ['cust_id', 'SO', 'AS PID', 'AS Customer Name']
+header_row = ['cust_id', 'SO', 'AS PID', 'AS Customer Name', 'Subscriptions']
 # header_row = ['cust_id', 'cust_name', 'sub id', 'renew date', 'renew date', 'sub status', 'so', 'as pid', 'as status']
 magic_list.append(header_row)
 print (magic_list)
@@ -365,9 +365,25 @@ for cust_id, so_dict in cust_db.items():
                 # {so: [(as_pid1, as_cust_name1),(as_pid2, as_cust_name2)]}
                 magic_as_pid_list.append(as_detail[0])
 
-                magic_list.append([magic_cust_id, so, as_detail[0], as_detail[1]])
+                # Lets find all subscriptions records
+                # sub_db
+                # {erp_name: [sub_id1,sub_id2]}
+                magic_sub_str = ''
+                if as_detail[1] in sub_db:
+                    subs_list = sub_db[as_detail[1]]
+                    for sub in subs_list:
+                        magic_sub_str = magic_sub_str + sub + " : "
+
+                # Append this row to the magic list
+                magic_list.append([magic_cust_id, so, as_detail[0], as_detail[1], magic_sub_str])
                 print([magic_cust_id, so, as_detail[0], as_detail[1]])
                 # time.sleep(.5)
+
+
+
+
+
+
 
 push_list_to_xls(magic_list,'magic.xlsx')
 
