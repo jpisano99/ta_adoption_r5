@@ -338,51 +338,73 @@ for row_num in range(1, sub_ws.nrows):
 # Make the Magic List
 #
 magic_list = []
-header_row = ['cust_id', 'cust_name', 'sub id', 'renew date', 'renew date', 'sub status', 'so', 'as pid', 'as status']
+header_row = ['cust_id', 'SO', 'AS PID', 'AS Customer Name']
+# header_row = ['cust_id', 'cust_name', 'sub id', 'renew date', 'renew date', 'sub status', 'so', 'as pid', 'as status']
 magic_list.append(header_row)
 print (magic_list)
 
 for cust_id, so_dict in cust_db.items():
     magic_cust_id = cust_id
-    magic_cust_name_list = cust_name_db[magic_cust_id] # List of all Names / aliases for this customer id
+    magic_cust_name_list = cust_name_db[magic_cust_id]  # List of all Names / aliases for this customer id
     magic_as_pid_list = []
     magic_sub_id_list = []
     magic_so_list = []
 
-    # print('SO Dict is:', len(so_dict), 'for Customer Name: ', magic_cust_name_list, '/', magic_cust_id)
+    # Let's find all the AS PIDs in as_db for this Customer ID
+    for so, sku_list in so_dict.items():
+        # print('checking customer id', magic_cust_id,' SO num ', so, 'has', len(sku_list), ' skus')
+        if so in as_db:
+            # This SO has an AS PID associated with it
+            magic_so_list.append(so)
+            my_as_details = as_db[so]
 
-    # # Let's find all the AS PIDs in as_db for this Customer ID
-    # for so, sku_list in so_dict.items():
-    #     if so in as_db:
-    #         my_as_details = as_db[so]
-    #         # magic_as_so = so
-    #         for as_detail in my_as_details:
-    #             # as_db
-    #             # {so: [(as_pid1, as_cust_name1),(as_pid2, as_cust_name2)]}
-    #             print('\tFound AS PID', as_detail[0], 'for Customer', as_detail[1])
-    #             magic_as_pid_list.append(as_detail[0])
-    #             time.sleep(1)
-    #     else:
-    #         print ('\tNO AS PID found for', magic_cust_name_list)
-    # time.sleep(1)
-    # print()
-    # print('cust id', magic_cust_id, '\tcust name', magic_cust_name, '\tpid:',magic_as_pid)
+            # OK Let's get all PIDS and associated AS data
+            for as_detail in my_as_details:
+                # Here is where we need to create a line item for each AS PID
+                # as_db
+                # {so: [(as_pid1, as_cust_name1),(as_pid2, as_cust_name2)]}
+                magic_as_pid_list.append(as_detail[0])
+
+                magic_list.append([magic_cust_id, so, as_detail[0], as_detail[1]])
+                print([magic_cust_id, so, as_detail[0], as_detail[1]])
+                # time.sleep(.5)
+
+push_list_to_xls(magic_list,'magic.xlsx')
+
+
+
+
+
+
+
+
+
+
+
+
+
+    #
+    # # time.sleep(.1)
+    # if magic_cust_id == '54028':
+    #     if magic_as_pid_list != []:
+    #         print()
+    #         print('Customer ID', magic_cust_id, ' with Cust Aliases:', magic_cust_name_list)
+    #         print('\tMatched AS SO List:', magic_so_list, '\tAS pid list:', magic_as_pid_list)
 
     # Let's find all Subscriptions for this Customer ID / Name
     # We need to search by ERP Customer Name
-    jim={}
-    if magic_cust_id == '-999':
-        print('Customer ID: ', magic_cust_id , 'has ', len(magic_cust_name_list), ' aliases:', magic_cust_name_list)
-        for cust_name in magic_cust_name_list:
-            if cust_name in sub_db:
-                # Found subscription(s)
-                print('\tName found in Subscription:', cust_name, ' subscriptions ', sub_db[cust_name])
-                magic_sub_id_list.append(sub_db[cust_name])
-        if magic_sub_id_list == []:
-            magic_sub_id_list.append("No Subscriptions Found")
-        # print('\t\t Found subscriptions: ', magic_sub_id_list)
+    # jim={}
+    #
+    # print('Customer ID: ', magic_cust_id , 'has ', len(magic_cust_name_list), ' aliases:', magic_cust_name_list)
+    # for cust_name in magic_cust_name_list:
+    #     if cust_name in sub_db:
+    #         # Found subscription(s)
+    #         print('\tName found in Subscription:', cust_name, ' subscriptions ', sub_db[cust_name])
+    #         magic_sub_id_list.append(sub_db[cust_name])
+    # if magic_sub_id_list == []:
+    #     magic_sub_id_list.append("No Subscriptions Found")
+    # # print('\t\t Found subscriptions: ', magic_sub_id_list)
 
-        time.sleep(1)
 exit()
 
 
