@@ -2,8 +2,10 @@ from my_app.func_lib.open_wb import open_wb
 from my_app.func_lib.push_list_to_xls import push_list_to_xls
 from my_app.func_lib.push_xlrd_to_xls import push_xlrd_to_xls
 from my_app.func_lib.build_sku_dict import build_sku_dict
+from my_app.func_lib.build_coverage_dict import build_coverage_dict
 from my_app.settings import app_cfg
 from my_app.Customer import Customer
+from my_app.func_lib.find_team import find_team
 import xlrd
 from datetime import datetime
 import time
@@ -18,6 +20,11 @@ print('RAW Input Data')
 print("\tAS Fixed SKUs Rows:", as_ws.nrows)
 print('\tBookings Rows:', cust_ws.nrows)
 print('\tSubscription Rows:', sub_ws.nrows)
+
+#
+# Build a Team Dict
+#
+team_dict = build_coverage_dict()
 
 #
 # Create a SKU Filter
@@ -75,6 +82,12 @@ for row_num in range(1, cust_ws.nrows):
     cust_ultimate_name = cust_ws.cell_value(row_num, 14)
     cust_so = cust_ws.cell_value(row_num, 11)
     cust_sku = cust_ws.cell_value(row_num, 19)
+    cust_sales_lev_1 = cust_ws.cell_value(row_num, 3)
+    cust_sales_lev_2 = cust_ws.cell_value(row_num, 4)
+    cust_sales_lev_3 = cust_ws.cell_value(row_num, 5)
+    cust_sales_lev_4 = cust_ws.cell_value(row_num, 6)
+    cust_sales_lev_5 = cust_ws.cell_value(row_num, 7)
+    cust_sales_lev_6 = cust_ws.cell_value(row_num, 8)
 
     # Grab this SO number in a simple dict {so:(cust_id, cust_id)
     if cust_so not in so_dict:
@@ -102,6 +115,19 @@ for row_num in range(1, cust_ws.nrows):
     if cust_id not in cust_db:
         # Create a new cust_id object and basic record
         cust_db[cust_id] = Customer(cust_id)
+        cust_db[cust_id].sales_lev_1 = cust_sales_lev_1
+        cust_db[cust_id].sales_lev_2 = cust_sales_lev_2
+        cust_db[cust_id].sales_lev_3 = cust_sales_lev_3
+        cust_db[cust_id].sales_lev_4 = cust_sales_lev_4
+        cust_db[cust_id].sales_lev_5 = cust_sales_lev_5
+        cust_db[cust_id].sales_lev_6 = cust_sales_lev_6
+        sales_level = cust_sales_lev_1 + ',' + cust_sales_lev_2 + ',' + cust_sales_lev_3 + ',' + \
+                      cust_sales_lev_4 + ',' + cust_sales_lev_5 + ',' + cust_sales_lev_6
+        sales_team = find_team(team_dict, sales_level)
+        pss = sales_team[0]
+        tsa = sales_team[1]
+        cust_db[cust_id].pss = pss
+        cust_db[cust_id].tsa = tsa
 
     # Is this a SKU we want if so add_order
     if cust_sku in sku_filter_dict:
@@ -120,7 +146,6 @@ for row_num in range(1, cust_ws.nrows):
 print('Unique Customer IDs with filter of', " '" + sku_filter_val+"' :", len(cust_db))
 print("Customer Unique Customer Names: ", len(cust_alias_db))
 print("Unique Sales Order Numbers: ", len(so_dict))
-
 
 # A quick check on customer ids -
 id_list = [['Customer ID', 'Customer Aliases']]
@@ -170,7 +195,11 @@ push_list_to_xls(id_list, 'unique_cust_ids.xlsx')
 #
 as_db = {}
 so_status_list = [['AS SO Number', 'AS Customer Name', "AS PID", 'Duplicate ?', 'Match in Booking ?']]
-
+as_zombie_so = []
+as_so_found_cntr = 0
+as_so_not_found_cntr = 0
+as_so_duplicate_cntr = 0
+as_so_unique_cntr = 0
 for row_num in range(1, as_ws.nrows):
     my_as_info_list = []
     # Gather the fields we want
@@ -181,8 +210,10 @@ for row_num in range(1, as_ws.nrows):
     # Just a check
     if as_so in as_db:
         dupe = 'Duplicate SO'
+        as_so_duplicate_cntr += 1
     else:
         dupe = 'Unique SO'
+        as_so_unique_cntr += 1
 
     if as_so not in as_db:
         my_as_info_list.append((as_pid, as_cust_name))
@@ -201,44 +232,74 @@ for row_num in range(1, as_ws.nrows):
     # Checks
     if as_so not in so_dict:
         so_status_list.append([as_so, as_cust_name, as_pid, dupe, 'NOT in Bookings'])
+        as_zombie_so.append([as_so, as_cust_name, as_pid])
+        as_so_not_found_cntr += 1
+        # print()
+        # if as_cust_name in cust_alias_db:
+        #     print("Found a Zombie", as_cust_name, as_so)
+        #     if as_so in so_dict:
+        #         print('\t Found matching Booking SO', as_so, as_cust_name, so_dict[as_so])
+        #     else:
+        #         print('\t Zombie SO NOT Found in Bookings SOs')
+        # else:
+        #     print('Zombie NOT Found', as_cust_name, as_so)
     else:
         so_status_list.append([as_so, as_cust_name, as_pid, dupe, 'FOUND in Bookings'])
+        as_so_found_cntr += 1
 
-# push_list_to_xls(so_status_list, 'AS SO Status List.xlsx')
+push_list_to_xls(so_status_list, 'AS SO Status List.xlsx')
+print('AS SO NOT Found (Zombies):', as_so_not_found_cntr)
+print('AS SO Found:', as_so_found_cntr)
+print('\t AS SO Totals:', as_so_found_cntr + as_so_not_found_cntr)
+print()
+print('AS SO Duplicate:', as_so_duplicate_cntr)
+print('AS SO Unique:', as_so_unique_cntr)
+
+# found_cntr = 0
+# not_found_cntr = 0
+# for as_so, as_info in as_db.items():
+#     found = False
+#     for cust_id, cust_obj in cust_db.items():
+#         for booking_so, skus in cust_obj.orders.items():
+#             if as_so == booking_so:
+#                 found = True
+#     if not found:
+#         not_found_cntr += 1
+#     else:
+#         found_cntr += 1
+# print (found_cntr, not_found_cntr)
+
 
 #
 # Update the cust_db with the AS data from as_db
 #
-missed=[]
+found_list = []
 for cust_id, cust_obj in cust_db.items():
     for so, skus in cust_obj.orders.items():
         if so in as_db:
+            found_list.append(so)
             cust_obj.add_as_pid(so, as_db[so])
-        else:
-            missed.append(so)
 
-print(missed)
-print(len(missed))
+print('Updated cust_db with: ', len(found_list), ' AS SOs')
 
-# Just checking
-x = 0
-check_list = [['pid','cust id']]
-for cust_id, cust_obj in cust_db.items():
-    for so_num, as_pids in cust_obj.as_pids.items():
-        for as_pid in as_pids:
-            x += 1
-            print(x, so_num, as_pid[0])
-            check_list.append([so_num, as_pid[0], cust_id])
+# # Just checking
+# x = 0
+# check_list = [['pid','cust id']]
+# for cust_id, cust_obj in cust_db.items():
+#     for so_num, as_pids in cust_obj.as_pids.items():
+#         for as_pid_info in as_pids:
+#             x += 1
+#             # print(x, so_num, as_pid_info[0], as_pid_info[1])
+#             check_list.append([x, so_num, as_pid_info[0], as_pid_info[1]])
+#
+# print(x)
+# exit()
 
-# print("AS SO Hits", len(so_hit_list))
+# print("AS SO Hits", len(so_status_list))
 # print("AS SO Misses", len(so_miss_list))
 # print('AS Rows', len(so_miss_list) + len(so_hit_list))
 # push_list_to_xls(so_miss_list, 'AS SO Miss List.xlsx')
 # push_list_to_xls(so_hit_list, 'AS SO Hit List.xlsx')
-exit()
-
-
-
 
 
 # # Display AS Sales Order info
@@ -286,24 +347,28 @@ for row_num in range(1, sub_ws.nrows):
 # Make the Magic List
 #
 magic_list = []
-header_row = ['cust_id', 'SO', 'AS PID', 'AS Customer Name', 'Subscriptions']
-# header_row = ['cust_id', 'cust_name', 'sub id', 'renew date', 'renew date', 'sub status', 'so', 'as pid', 'as status']
+header_row = ['Customer ID', 'SO', 'AS PID', 'AS Customer Name',
+              'Subscriptions', 'Sub Start Date', 'Sub Renew Date', ' Next Renewal Date',
+              'AS Tracking Status', 'AS Tracking Sub Status', 'AS Tracking Comments']
 magic_list.append(header_row)
 print (magic_list)
-
+x = 0
 for cust_id, cust_obj in cust_db.items():
     cust_aliases = cust_obj.aliases
     as_pids = cust_obj.as_pids
     sub_ids = cust_obj.sub_ids
+    pss = cust_obj.pss
+    tsa = cust_obj.tsa
 
     if len(as_pids) == 0:
         continue
     else:
         # Let's look at the AS PIDs in cust_obj
-        magic_row = []
         for so, as_pid_info in as_pids.items():
             # OK Let's get all PIDS and associated AS data
+            # We will make a row for each AS SO
             for as_detail in as_pid_info:
+                magic_row = []
                 as_so = so
                 as_pid = as_detail[0]
                 as_cust_name = as_detail[1]
@@ -312,19 +377,40 @@ for cust_id, cust_obj in cust_db.items():
                 # We will match the Subscription by the AS Customer Name
                 matching_sub_info = []
                 matching_sub_ids = ''
+                matching_sub_dates = ''
+                next_renewal_date = datetime(2050, 1, 1)
 
+                # Get the sub ids and dates
                 for sub_id, sub_info in sub_ids.items():
                     if sub_info[0] == as_cust_name:
                         sub_start_date = sub_info[1]
+                        sub_renew_date = sub_info[2]
+                        if sub_renew_date < next_renewal_date:
+                            next_renewal_date = sub_renew_date
                         matching_sub_ids = sub_id + " : " + matching_sub_ids
+                        matching_sub_dates = sub_renew_date.strftime("%m/%d/%Y") + ' : ' + matching_sub_dates
 
-                # print(cust_id, so, as_pid, as_cust_name, matching_sub_ids)
-                # time.sleep(1)
                 matching_sub_ids = matching_sub_ids[:-3]
-                magic_row = [cust_id, so, as_pid, as_cust_name, matching_sub_ids, sub_start_date]
+                matching_sub_dates = matching_sub_dates[:-3]
 
-        magic_list.append(magic_row)
+                # Go get additional AS Info
+                as_tracking_status = ''
+                as_tracking_sub_status = ''
+                as_tracking_comments = ''
+                for row_num in range(1, as_ws.nrows):
+                    if as_pid == as_ws.cell_value(row_num, 0):
+                        as_tracking_status = as_ws.cell_value(row_num, 7)
+                        as_tracking_sub_status = as_ws.cell_value(row_num, 8)
+                        as_tracking_comments = as_ws.cell_value(row_num, 9)
+                        break
 
+                magic_row = [cust_id, so, as_pid, as_cust_name, pss, tsa,
+                             matching_sub_ids, matching_sub_dates, sub_start_date, sub_renew_date, next_renewal_date,
+                             as_tracking_status, as_tracking_sub_status, as_tracking_comments]
+                magic_list.append(magic_row)
+
+print(len(magic_list))
+print(x)
 push_list_to_xls(magic_list, 'magic.xlsx')
 exit()
 
