@@ -5,6 +5,7 @@ class Customer:
         self.cust_id = cust_id
         self.pss = ''
         self.tsa = ''
+        self.am = ''
         self.sales_lev_1 = ''
         self.sales_lev_2 = ''
         self.sales_lev_3 = ''
@@ -15,7 +16,7 @@ class Customer:
         self.aliases = []  # Simple list of customer erp names for this cust id
         self.orders = {}  # Simple dict of {SO #: [sku1, sku2]}
         self.as_pids = {}  # Simple dict of {SO #: [(pid1, as_customer_name)]}
-        self.sub_ids = {}  # Simple dict of {sub_id: [start_date, renew_date]}
+        self.subs = []  # Simple list of lists of subscriptions[]
 
     def add_order(self, order_num, sku):
         if order_num in self.orders:
@@ -39,7 +40,8 @@ class Customer:
         # with ALL PIDs for this SO for this cust_id
         self.as_pids[order_num] = as_pid_info
 
-    def add_sub_id(self, sub_id, sub_id_info):
-        # sub_id_pid_info is a list of tuples (sub_cust_name, start_date, renew_date)
+    def add_sub_id(self, sub_info):
+        # sub_id_pid_info is a list of lists (sub_id, sub_cust_name, start_date, renew_date, status, monthly_rev)
         # with ALL Subscriptions for this erp_customer name
-        self.sub_ids[sub_id] = sub_id_info
+        self.subs.append(sub_info)
+

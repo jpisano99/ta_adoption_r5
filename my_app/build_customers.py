@@ -1,6 +1,5 @@
 from my_app.func_lib.open_wb import open_wb
 from my_app.func_lib.push_list_to_xls import push_list_to_xls
-from my_app.func_lib.push_xlrd_to_xls import push_xlrd_to_xls
 from my_app.func_lib.build_sku_dict import build_sku_dict
 from my_app.func_lib.build_coverage_dict import build_coverage_dict
 from my_app.settings import app_cfg
@@ -9,6 +8,51 @@ from my_app.func_lib.find_team import find_team
 import xlrd
 from datetime import datetime
 import time
+
+
+def process_sub_info(sub_ids):
+    # Lets find all subscriptions records
+    # We will match the Subscription by the AS Customer Name
+    # matching_sub_info = []
+    sub_summary = ''
+    next_renewal_date = datetime(2050, 1, 1)
+    sub_renew_status = ''
+    sub_start_date = ''
+    sub_renew_date = ''
+
+    # Get the sub ids and dates
+    for sub_id, sub_info in sub_ids.items():
+        # if sub_info[0] == as_cust_name:
+        sub_start_date = sub_info[1]
+        sub_renew_date = sub_info[2]
+        sub_renew_status = sub_info[3]
+        sub_monthly_rev = sub_info[4]
+
+        days_to_renew = (sub_renew_date - today).days
+        if sub_renew_date < next_renewal_date:
+            next_renewal_date = sub_renew_date
+
+        sub_summary = sub_id + ' - ' + \
+            sub_start_date.strftime("%m/%d/%Y") + '\t - ' + \
+            sub_renew_date.strftime("%m/%d/%Y") + ' - ' + \
+            str(days_to_renew) + ' - ' + \
+            '${:,}'.format(round(sub_monthly_rev * 12)) + \
+            ' \n' + sub_summary
+
+    sub_summary = sub_summary[:-1]
+
+    if next_renewal_date == next_renewal_date == datetime(2050, 1, 1):
+        next_renewal_date = ''
+        days_to_renew = ''
+    else:
+        days_to_renew = (next_renewal_date - today).days
+
+
+    return sub_summary, next_renewal_date, days_to_renew, sub_renew_status
+
+
+
+
 
 as_wb, as_ws = open_wb(app_cfg['TESTING_TA_AS_FIXED_SKU_RAW'])
 cust_wb, cust_ws = open_wb(app_cfg['TESTING_BOOKINGS_RAW_WITH_SO'])
@@ -122,7 +166,7 @@ for row_num in range(1, cust_ws.nrows):
         cust_db[cust_id].sales_lev_5 = cust_sales_lev_5
         cust_db[cust_id].sales_lev_6 = cust_sales_lev_6
         sales_level = cust_sales_lev_1 + ',' + cust_sales_lev_2 + ',' + cust_sales_lev_3 + ',' + \
-                      cust_sales_lev_4 + ',' + cust_sales_lev_5 + ',' + cust_sales_lev_6
+            cust_sales_lev_4 + ',' + cust_sales_lev_5 + ',' + cust_sales_lev_6
         sales_team = find_team(team_dict, sales_level)
         pss = sales_team[0]
         tsa = sales_team[1]
@@ -139,9 +183,6 @@ for row_num in range(1, cust_ws.nrows):
     # Add this name to an easy alias lookup dict
     if cust_erp_name not in cust_alias_db:
         cust_alias_db[cust_erp_name] = cust_id
-
-# print(cust_db['16294'].orders)
-# print(cust_db['16294'].aliases)
 
 print('Unique Customer IDs with filter of', " '" + sku_filter_val+"' :", len(cust_db))
 print("Customer Unique Customer Names: ", len(cust_alias_db))
@@ -160,14 +201,6 @@ for cust_id, cust_obj in cust_db.items():
     id_list.append([cust_id, alias_str])
 
 push_list_to_xls(id_list, 'unique_cust_ids.xlsx')
-
-
-# print(len(cust_id_db))
-# for id, name in cust_id_db.items():
-#     print(id,name)
-#     time.sleep(1)
-# exit()
-
 
 # # Display Customer IDs and Aliases
 # for cust_id, cust_obj in cust_db.items():
@@ -191,7 +224,6 @@ push_list_to_xls(id_list, 'unique_cust_ids.xlsx')
 #
 # Process AS AS-F SKU File - match bookings SO and (AS SO / PID) numbers
 # and make a list of tuples for each cust_id
-# {so: [(as_pid1,as_cust_name1),(as_pid2,as_cust_name2)]
 #
 as_db = {}
 so_status_list = [['AS SO Number', 'AS Customer Name', "AS PID", 'Duplicate ?', 'Match in Booking ?']]
@@ -234,15 +266,6 @@ for row_num in range(1, as_ws.nrows):
         so_status_list.append([as_so, as_cust_name, as_pid, dupe, 'NOT in Bookings'])
         as_zombie_so.append([as_so, as_cust_name, as_pid])
         as_so_not_found_cntr += 1
-        # print()
-        # if as_cust_name in cust_alias_db:
-        #     print("Found a Zombie", as_cust_name, as_so)
-        #     if as_so in so_dict:
-        #         print('\t Found matching Booking SO', as_so, as_cust_name, so_dict[as_so])
-        #     else:
-        #         print('\t Zombie SO NOT Found in Bookings SOs')
-        # else:
-        #     print('Zombie NOT Found', as_cust_name, as_so)
     else:
         so_status_list.append([as_so, as_cust_name, as_pid, dupe, 'FOUND in Bookings'])
         as_so_found_cntr += 1
@@ -255,23 +278,8 @@ print()
 print('AS SO Duplicate:', as_so_duplicate_cntr)
 print('AS SO Unique:', as_so_unique_cntr)
 
-# found_cntr = 0
-# not_found_cntr = 0
-# for as_so, as_info in as_db.items():
-#     found = False
-#     for cust_id, cust_obj in cust_db.items():
-#         for booking_so, skus in cust_obj.orders.items():
-#             if as_so == booking_so:
-#                 found = True
-#     if not found:
-#         not_found_cntr += 1
-#     else:
-#         found_cntr += 1
-# print (found_cntr, not_found_cntr)
-
-
 #
-# Update the cust_db with the AS data from as_db
+# Update the cust_db objects with the AS data from as_db
 #
 found_list = []
 for cust_id, cust_obj in cust_db.items():
@@ -282,35 +290,6 @@ for cust_id, cust_obj in cust_db.items():
 
 print('Updated cust_db with: ', len(found_list), ' AS SOs')
 
-# # Just checking
-# x = 0
-# check_list = [['pid','cust id']]
-# for cust_id, cust_obj in cust_db.items():
-#     for so_num, as_pids in cust_obj.as_pids.items():
-#         for as_pid_info in as_pids:
-#             x += 1
-#             # print(x, so_num, as_pid_info[0], as_pid_info[1])
-#             check_list.append([x, so_num, as_pid_info[0], as_pid_info[1]])
-#
-# print(x)
-# exit()
-
-# print("AS SO Hits", len(so_status_list))
-# print("AS SO Misses", len(so_miss_list))
-# print('AS Rows', len(so_miss_list) + len(so_hit_list))
-# push_list_to_xls(so_miss_list, 'AS SO Miss List.xlsx')
-# push_list_to_xls(so_hit_list, 'AS SO Hit List.xlsx')
-
-
-# # Display AS Sales Order info
-# for cust_id, cust_obj in cust_db.items():
-#     if len(cust_obj.as_pids) > 1:
-#         print('Customer ID', cust_id, ' has multiple PIDs')
-#         for as_pid in cust_obj.as_pids.items():
-#             print('\t\t', as_pid)
-#             time.sleep(1)
-# exit()
-
 #
 # Process Subscriptions and add to Customer Objects
 #
@@ -320,6 +299,8 @@ for row_num in range(1, sub_ws.nrows):
     sub_id = sub_ws.cell_value(row_num, 4)
     sub_start_date = sub_ws.cell_value(row_num, 6)
     sub_renew_date = sub_ws.cell_value(row_num, 8)
+    sub_renew_status = sub_ws.cell_value(row_num, 5)
+    sub_monthly_rev = sub_ws.cell_value(row_num, 10)
 
     year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_start_date, sub_wb.datemode)
     sub_start_date = datetime(year, month, day)
@@ -330,29 +311,22 @@ for row_num in range(1, sub_ws.nrows):
     if sub_cust_name in cust_alias_db:
         cust_id = cust_alias_db[sub_cust_name]
         cust_obj = cust_db[cust_id]
-        sub_id_info = (sub_cust_name, sub_start_date, sub_renew_date)
+        sub_id_info = (sub_cust_name, sub_start_date, sub_renew_date, sub_renew_status, sub_monthly_rev)
         cust_obj.add_sub_id(sub_id, sub_id_info)
-
-# # Display Subscription info
-# for cust_id, cust_obj in cust_db.items():
-#     if len(cust_obj.sub_ids) > 1:
-#         print('Customer ID', cust_id, ' has multiple Subscriptions')
-#         for sub_id in cust_obj.sub_ids.items():
-#             print('\t\t', sub_id)
-#             time.sleep(1)
-# exit()
-
 
 #
 # Make the Magic List
 #
 magic_list = []
-header_row = ['Customer ID', 'SO', 'AS PID', 'AS Customer Name',
-              'Subscriptions', 'Sub Start Date', 'Sub Renew Date', ' Next Renewal Date',
-              'AS Tracking Status', 'AS Tracking Sub Status', 'AS Tracking Comments']
+header_row = ['Customer ID', 'AS SO', 'AS PID', 'AS Customer Name', 'PSS', 'TSA',
+              'Upcoming Renewal Info' + ' \n' + 'Sub ID - Start Date - Renewal Date - Days to Renew - Annual Rev',
+              ' Next Renewal Date', 'Days to Renew', 'Subscription Status', 'AS Delivery Mgr', 'AS Tracking Status',
+              'AS Tracking Sub Status', 'AS Tracking Comments']
 magic_list.append(header_row)
 print (magic_list)
 x = 0
+today = datetime.today()
+
 for cust_id, cust_obj in cust_db.items():
     cust_aliases = cust_obj.aliases
     as_pids = cust_obj.as_pids
@@ -361,11 +335,21 @@ for cust_id, cust_obj in cust_db.items():
     tsa = cust_obj.tsa
 
     if len(as_pids) == 0:
-        continue
+        # No AS PID info available
+        # magic_row = [cust_id, so, as_pid, as_cust_name, pss, tsa,
+        #              matching_sub_dates, next_renewal_date,
+        #              days_to_renew, sub_renew_status, as_dm, as_tracking_status, as_tracking_sub_status,
+        #              as_tracking_comments]
+        # str1 = ''.join(cust_obj.aliases)
+
+        sub_summary, next_renewal_date, days_to_renew, sub_renew_status = process_sub_info(cust_obj.sub_ids)
+        magic_row = [cust_id, '', 'AS Info Unavailable', cust_aliases[0], pss, tsa,
+                     sub_summary, next_renewal_date,
+                     days_to_renew, sub_renew_status, '', '', '', '']
+        magic_list.append(magic_row)
     else:
         # Let's look at the AS PIDs in cust_obj
         for so, as_pid_info in as_pids.items():
-            # OK Let's get all PIDS and associated AS data
             # We will make a row for each AS SO
             for as_detail in as_pid_info:
                 magic_row = []
@@ -373,40 +357,62 @@ for cust_id, cust_obj in cust_db.items():
                 as_pid = as_detail[0]
                 as_cust_name = as_detail[1]
 
-                # Lets find all subscriptions records
-                # We will match the Subscription by the AS Customer Name
-                matching_sub_info = []
-                matching_sub_ids = ''
-                matching_sub_dates = ''
-                next_renewal_date = datetime(2050, 1, 1)
+                sub_summary, next_renewal_date, days_to_renew, sub_renew_status = process_sub_info(sub_ids)
 
-                # Get the sub ids and dates
-                for sub_id, sub_info in sub_ids.items():
-                    if sub_info[0] == as_cust_name:
-                        sub_start_date = sub_info[1]
-                        sub_renew_date = sub_info[2]
-                        if sub_renew_date < next_renewal_date:
-                            next_renewal_date = sub_renew_date
-                        matching_sub_ids = sub_id + " : " + matching_sub_ids
-                        matching_sub_dates = sub_renew_date.strftime("%m/%d/%Y") + ' : ' + matching_sub_dates
+                # # Lets find all subscriptions records
+                # # We will match the Subscription by the AS Customer Name
+                # matching_sub_info = []
+                # matching_sub_ids = ''
+                # matching_sub_dates = ''
+                # next_renewal_date = datetime(2050, 1, 1)
+                # sub_renew_status = ''
+                # sub_start_date = ''
+                # sub_renew_date = ''
 
-                matching_sub_ids = matching_sub_ids[:-3]
-                matching_sub_dates = matching_sub_dates[:-3]
+                # # Get the sub ids and dates
+                # for sub_id, sub_info in sub_ids.items():
+                #     if sub_info[0] == as_cust_name:
+                #         sub_start_date = sub_info[1]
+                #         sub_renew_date = sub_info[2]
+                #         sub_renew_status = sub_info[3]
+                #         sub_monthly_rev = sub_info[4]
+                #
+                #         days_to_renew = (sub_renew_date - today).days
+                #         if sub_renew_date < next_renewal_date:
+                #             next_renewal_date = sub_renew_date
+                #         matching_sub_ids = sub_id + " : " + matching_sub_ids
+                #         matching_sub_dates = sub_id + ' - ' + \
+                #             sub_start_date.strftime("%m/%d/%Y") + ' - ' + \
+                #             sub_renew_date.strftime("%m/%d/%Y") + ' - ' + \
+                #             str(days_to_renew) + ' - ' + \
+                #             '${:,}'.format(sub_monthly_rev * 12) + \
+                #             ' \n' + matching_sub_dates
+                #
+                # matching_sub_ids = matching_sub_ids[:-3]
+                # matching_sub_dates = matching_sub_dates[:-1]
+                # if next_renewal_date == next_renewal_date == datetime(2050, 1, 1):
+                #     next_renewal_date = ''
+                #     days_to_renew = ''
+                # else:
+                #     days_to_renew = (next_renewal_date - today).days
 
                 # Go get additional AS Info
                 as_tracking_status = ''
                 as_tracking_sub_status = ''
                 as_tracking_comments = ''
+                as_dm = ''
                 for row_num in range(1, as_ws.nrows):
                     if as_pid == as_ws.cell_value(row_num, 0):
+                        as_dm = as_ws.cell_value(row_num, 1)
                         as_tracking_status = as_ws.cell_value(row_num, 7)
                         as_tracking_sub_status = as_ws.cell_value(row_num, 8)
                         as_tracking_comments = as_ws.cell_value(row_num, 9)
                         break
 
                 magic_row = [cust_id, so, as_pid, as_cust_name, pss, tsa,
-                             matching_sub_ids, matching_sub_dates, sub_start_date, sub_renew_date, next_renewal_date,
-                             as_tracking_status, as_tracking_sub_status, as_tracking_comments]
+                             sub_summary, next_renewal_date,
+                             days_to_renew, sub_renew_status, as_dm, as_tracking_status, as_tracking_sub_status, as_tracking_comments]
+
                 magic_list.append(magic_row)
 
 print(len(magic_list))
@@ -420,196 +426,199 @@ exit()
 
 
 
-    #
-    # # time.sleep(.1)
-    # if magic_cust_id == '54028':
-    #     if magic_as_pid_list != []:
-    #         print()
-    #         print('Customer ID', magic_cust_id, ' with Cust Aliases:', magic_cust_name_list)
-    #         print('\tMatched AS SO List:', magic_so_list, '\tAS pid list:', magic_as_pid_list)
-
-    # Let's find all Subscriptions for this Customer ID / Name
-    # We need to search by ERP Customer Name
-    # jim={}
-    #
-    # print('Customer ID: ', magic_cust_id , 'has ', len(magic_cust_name_list), ' aliases:', magic_cust_name_list)
-    # for cust_name in magic_cust_name_list:
-    #     if cust_name in sub_db:
-    #         # Found subscription(s)
-    #         print('\tName found in Subscription:', cust_name, ' subscriptions ', sub_db[cust_name])
-    #         magic_sub_id_list.append(sub_db[cust_name])
-    # if magic_sub_id_list == []:
-    #     magic_sub_id_list.append("No Subscriptions Found")
-    # # print('\t\t Found subscriptions: ', magic_sub_id_list)
-
-exit()
 
 
 
-    # sub_db
-    # {erp_name: [sub_id1,sub_id2]}
-
-    # cust_id_db
-    # {erp_name: cust_id}
 
 
-exit()
+
+
+
+
+#
+# # time.sleep(.1)
+# if magic_cust_id == '54028':
+#     if magic_as_pid_list != []:
+#         print()
+#         print('Customer ID', magic_cust_id, ' with Cust Aliases:', magic_cust_name_list)
+#         print('\tMatched AS SO List:', magic_so_list, '\tAS pid list:', magic_as_pid_list)
+
+# Let's find all Subscriptions for this Customer ID / Name
+# We need to search by ERP Customer Name
+# jim={}
+#
+# print('Customer ID: ', magic_cust_id , 'has ', len(magic_cust_name_list), ' aliases:', magic_cust_name_list)
+# for cust_name in magic_cust_name_list:
+#     if cust_name in sub_db:
+#         # Found subscription(s)
+#         print('\tName found in Subscription:', cust_name, ' subscriptions ', sub_db[cust_name])
+#         magic_sub_id_list.append(sub_db[cust_name])
+# if magic_sub_id_list == []:
+#     magic_sub_id_list.append("No Subscriptions Found")
+# # print('\t\t Found subscriptions: ', magic_sub_id_list)
+
+
+# sub_db
+# {erp_name: [sub_id1,sub_id2]}
+
+# cust_id_db
+# {erp_name: cust_id}
 
 
 #
 #   IGNORE BELOW
 #
 
-
-
-
-
-
-for row_num in range(1, sub_ws.nrows):
-    # Gather the fields we want
-    magic_sub_cust_name = sub_ws.cell_value(row_num, 2)
-    magic_sub_id = sub_ws.cell_value(row_num, 4)
-    magic_sub_status = sub_ws.cell_value(row_num, 5)
-    magic_sub_start_date = sub_ws.cell_value(row_num, 6)
-    magic_sub_renew_date = sub_ws.cell_value(row_num, 8)
-
-    # Get the customer ID
-    if magic_sub_cust_name in cust_id_db:
-        print(len(magic_sub_cust_name))
-        print('\t',magic_sub_cust_name)
-        time.sleep(.5)
-
-        magic_bookings_cust_id = cust_id_db[magic_sub_cust_name]
-    else:
-        pass
-        # print("Customer ID Miss", magic_sub_cust_name)
-
-    # Get
-
-# Diagnostic
-match = 0
-misses = 0
-for row_num in range(1, as_ws.nrows):
-    found = False
-    as_cust_name = as_ws.cell_value(row_num, 2)
-    #print(as_cust_name)
-    for row_num in range(1, sub_ws.nrows):
-        sub_cust_name = sub_ws.cell_value(row_num, 2)
-        #time.sleep(1)
-        #print("\t",sub_cust_name)
-        if sub_cust_name == as_cust_name:
-            found=True
-            match += 1
-            print('\tMatched', as_cust_name)
-            break
-    if not found:
-        misses += 1
-        print(as_cust_name, 'not found in AS sheet')
-
-    #time.sleep(1)
-
-print('matches' ,match,misses)
-exit()
-
-
-
-
-today = datetime.today()
-expired = []
-thirty_days = []
-sixty_days = []
-ninety_days = []
-ninety_plus = []
-
-
-for row_num in range(1, sub_ws.nrows):
-    # Gather the fields we want
-    sub_cust_name = sub_ws.cell_value(row_num, 2)
-    sub_id = sub_ws.cell_value(row_num, 4)
-    sub_status = sub_ws.cell_value(row_num, 5)
-    sub_start_date = sub_ws.cell_value(row_num, 6)
-    sub_renew_date = sub_ws.cell_value(row_num, 8)
-
-    if sub_cust_name in cust_id_db:
-        # Get the cust_id that matches this subscription name
-        sub_cust_id = cust_id_db[sub_cust_name]
-
-        # Go get a list of SOs for this cust_id
-        # Use this to find and AS engagements
-        my_so_dict = cust_db[sub_cust_id]
-        my_so_list = []
-        for so, skus in my_so_dict.items():
-            my_so_list.append(so)
-
-        # Go get a list of AS PIDs for these SO's
-        my_as_pids = []
-        for so in my_so_list:
-            if so in as_db:
-                # Found an AS record
-                as_info = as_db[so]
-                as_pid = as_info[0][0]
-                as_cust_name = as_info[0][1]
-                my_as_pids.append(as_pid)
-            # else:
-            #     my_as_pids.append("NO AS Engagements Found !")
-    else:
-        # We can't find a match on this customer name
-        # Maybe check aliases ?
-        sub_cust_id = 'Unknown'
-        my_as_pids = ''
-        my_so_list = ''
-
-    print(sub_cust_id, sub_cust_name, 'have ', len(my_as_pids), ' PIDS')
-    print('\t\t',my_as_pids)
-    # print('\tSOs',my_so_list)
-    # print('\tAS PIDS', my_as_pids)
-    # print()
-    time.sleep(1)
-
-    year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_start_date, sub_wb.datemode)
-    sub_start_date = datetime(year, month, day)
-
-    year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_renew_date, sub_wb.datemode)
-    sub_renew_date = datetime(year, month, day)
-
-    days_to_renew = (sub_renew_date - today).days
-
-    #
-    # Bucket this customer renewal by age
-    #
-    if days_to_renew < 0:
-        expired.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
-    elif days_to_renew <= 30:
-        thirty_days.append([sub_cust_id, sub_cust_name, sub_id, sub_renew_date, days_to_renew, sub_status])
-    elif days_to_renew <= 60:
-        sixty_days.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
-    elif days_to_renew <= 90:
-        ninety_days.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
-    elif days_to_renew > 90:
-        ninety_plus.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
-        # print(ninety_plus)
-        # time.sleep(1)
-
-subs_total = len(expired)+len(thirty_days)+len(sixty_days)+len(ninety_days)+len(ninety_plus)
-print()
-print('Total Subscriptions: ',subs_total)
-print('\tExpired:', len(expired))
-print('\t30 days:', len(thirty_days))
-print('\t60 days:', len(sixty_days))
-print('\t90 days:', len(ninety_days))
-print('\t90+ days:', len(ninety_plus))
-print()
-
-print(header_row)
-thirty_days.insert(0, header_row)
-
-
-
-
-push_list_to_xls(thirty_days,'jim_subs.xlsx')
-print('sub hits', hit)
-print('sub miss', miss)
-
-
-cust_id_db
+#
+#
+#
+#
+#
+# for row_num in range(1, sub_ws.nrows):
+#     # Gather the fields we want
+#     magic_sub_cust_name = sub_ws.cell_value(row_num, 2)
+#     magic_sub_id = sub_ws.cell_value(row_num, 4)
+#     magic_sub_status = sub_ws.cell_value(row_num, 5)
+#     magic_sub_start_date = sub_ws.cell_value(row_num, 6)
+#     magic_sub_renew_date = sub_ws.cell_value(row_num, 8)
+#
+#     # Get the customer ID
+#     if magic_sub_cust_name in cust_id_db:
+#         print(len(magic_sub_cust_name))
+#         print('\t',magic_sub_cust_name)
+#         time.sleep(.5)
+#
+#         magic_bookings_cust_id = cust_id_db[magic_sub_cust_name]
+#     else:
+#         pass
+#         # print("Customer ID Miss", magic_sub_cust_name)
+#
+#     # Get
+#
+# # Diagnostic
+# match = 0
+# misses = 0
+# for row_num in range(1, as_ws.nrows):
+#     found = False
+#     as_cust_name = as_ws.cell_value(row_num, 2)
+#     #print(as_cust_name)
+#     for row_num in range(1, sub_ws.nrows):
+#         sub_cust_name = sub_ws.cell_value(row_num, 2)
+#         #time.sleep(1)
+#         #print("\t",sub_cust_name)
+#         if sub_cust_name == as_cust_name:
+#             found=True
+#             match += 1
+#             print('\tMatched', as_cust_name)
+#             break
+#     if not found:
+#         misses += 1
+#         print(as_cust_name, 'not found in AS sheet')
+#
+#     #time.sleep(1)
+#
+# print('matches' ,match,misses)
+# exit()
+#
+#
+#
+#
+# today = datetime.today()
+# expired = []
+# thirty_days = []
+# sixty_days = []
+# ninety_days = []
+# ninety_plus = []
+#
+#
+# for row_num in range(1, sub_ws.nrows):
+#     # Gather the fields we want
+#     sub_cust_name = sub_ws.cell_value(row_num, 2)
+#     sub_id = sub_ws.cell_value(row_num, 4)
+#     sub_status = sub_ws.cell_value(row_num, 5)
+#     sub_start_date = sub_ws.cell_value(row_num, 6)
+#     sub_renew_date = sub_ws.cell_value(row_num, 8)
+#
+#     if sub_cust_name in cust_id_db:
+#         # Get the cust_id that matches this subscription name
+#         sub_cust_id = cust_id_db[sub_cust_name]
+#
+#         # Go get a list of SOs for this cust_id
+#         # Use this to find and AS engagements
+#         my_so_dict = cust_db[sub_cust_id]
+#         my_so_list = []
+#         for so, skus in my_so_dict.items():
+#             my_so_list.append(so)
+#
+#         # Go get a list of AS PIDs for these SO's
+#         my_as_pids = []
+#         for so in my_so_list:
+#             if so in as_db:
+#                 # Found an AS record
+#                 as_info = as_db[so]
+#                 as_pid = as_info[0][0]
+#                 as_cust_name = as_info[0][1]
+#                 my_as_pids.append(as_pid)
+#             # else:
+#             #     my_as_pids.append("NO AS Engagements Found !")
+#     else:
+#         # We can't find a match on this customer name
+#         # Maybe check aliases ?
+#         sub_cust_id = 'Unknown'
+#         my_as_pids = ''
+#         my_so_list = ''
+#
+#     print(sub_cust_id, sub_cust_name, 'have ', len(my_as_pids), ' PIDS')
+#     print('\t\t',my_as_pids)
+#     # print('\tSOs',my_so_list)
+#     # print('\tAS PIDS', my_as_pids)
+#     # print()
+#     time.sleep(1)
+#
+#     year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_start_date, sub_wb.datemode)
+#     sub_start_date = datetime(year, month, day)
+#
+#     year, month, day, hour, minute, second = xlrd.xldate_as_tuple(sub_renew_date, sub_wb.datemode)
+#     sub_renew_date = datetime(year, month, day)
+#
+#     days_to_renew = (sub_renew_date - today).days
+#
+#     #
+#     # Bucket this customer renewal by age
+#     #
+#     if days_to_renew < 0:
+#         expired.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+#     elif days_to_renew <= 30:
+#         thirty_days.append([sub_cust_id, sub_cust_name, sub_id, sub_renew_date, days_to_renew, sub_status])
+#     elif days_to_renew <= 60:
+#         sixty_days.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+#     elif days_to_renew <= 90:
+#         ninety_days.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+#     elif days_to_renew > 90:
+#         ninety_plus.append([sub_cust_id, sub_cust_name, sub_id, sub_status])
+#         # print(ninety_plus)
+#         # time.sleep(1)
+#
+# subs_total = len(expired)+len(thirty_days)+len(sixty_days)+len(ninety_days)+len(ninety_plus)
+# print()
+# print('Total Subscriptions: ',subs_total)
+# print('\tExpired:', len(expired))
+# print('\t30 days:', len(thirty_days))
+# print('\t60 days:', len(sixty_days))
+# print('\t90 days:', len(ninety_days))
+# print('\t90+ days:', len(ninety_plus))
+# print()
+#
+# print(header_row)
+# thirty_days.insert(0, header_row)
+#
+#
+#
+#
+# push_list_to_xls(thirty_days,'jim_subs.xlsx')
+# print('sub hits', hit)
+# print('sub miss', miss)
+#
+#
+# cust_id_db
 

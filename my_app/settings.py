@@ -33,9 +33,13 @@ app_cfg = dict(
     FY19_RAW_SUBSCRIPTIONS='TA Master Subscriptions as of',
     AS_DELIVERY_RAW_STATUS='TA AS Delivery Status as of',
 
-    TESTING_RAW_SUBSCRIPTIONS='TA Master Subscriptions as of 06-26-19.xlsx',
-    TESTING_BOOKINGS_RAW_WITH_SO='TA Master Bookings with SO as of 06-26-19.xlsx',
-    TESTING_TA_AS_FIXED_SKU_RAW = 'TA AS-F Raw Data TA Only - 06-27-19.xlsx',
+    TESTING_RAW_SUBSCRIPTIONS='TA Master Subscriptions as of 08-08-19.xlsx',
+    TESTING_BOOKINGS_RAW_WITH_SO='TA Master Bookings with SO as of 08-08-19.xlsx',
+    TESTING_TA_AS_FIXED_SKU_RAW = 'TA AS-F Raw Data TA Only - 08-08-19.xlsx',
+
+    # TESTING_RAW_SUBSCRIPTIONS='TA Master Subscriptions as of 06-26-19.xlsx',
+    # TESTING_BOOKINGS_RAW_WITH_SO='TA Master Bookings with SO as of 06-26-19.xlsx',
+    # TESTING_TA_AS_FIXED_SKU_RAW = 'TA AS-F Raw Data TA Only - 06-27-19.xlsx',
 
     XLS_RENEWALS='tmp_Master Renewals.xlsx',
     XLS_SUBSCRIPTIONS='tmp_Master Subscriptions.xlsx',
