@@ -238,7 +238,7 @@ def main():
         # Gather the fields we want
         as_pid = as_ws.cell_value(row_num, 0)
         as_cust_name = as_ws.cell_value(row_num, 2)
-        as_so = as_ws.cell_value(row_num, 16)
+        as_so = as_ws.cell_value(row_num, 19)
 
         # Just a check
         if as_so in as_db:
